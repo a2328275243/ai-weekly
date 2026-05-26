@@ -1,0 +1,2 @@
+[console_scripts]
+ai-weekly = ai_weekly.cli:main

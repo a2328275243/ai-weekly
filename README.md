@@ -1,0 +1,191 @@
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║  DreamSeed 种梦计划 — AI创造者大赛  官方 README 模板                ║
+║                                                                      ║
+║  使用说明：                                                          ║
+║  1. 将本模板放在参赛仓库根目录 README.md 的顶部                       ║
+║  2. 头图使用 DreamField 官方公开活动图片地址                         ║
+║  3. 请保留 DREAMFIELD_README_HEADER_START / END 标识                 ║
+║  4. 分割线以下供创作者自由编写项目内容                               ║
+╚══════════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- DREAMFIELD_README_HEADER_START -->
+
+<p align="center">
+  <a href="https://www.dreamfield.top">
+    <img src="https://www.dreamfield.top/dream-field/contest-readme/assets/dreamseed-readme-banner.png" alt="DreamSeed 种梦计划参赛作品" width="100%" />
+  </a>
+</p>
+
+<!-- DREAMFIELD_README_HEADER_END -->
+
+# 📝 AI Weekly
+
+从 Git 提交记录自动生成工作周报 — 再也不用手写周报了。
+
+## 🤔 它解决什么问题？
+
+每周一早上，你打开文档开始写周报：
+- 翻 Git log 回忆这周干了什么
+- 把零散的 commit 信息整理成领导能看懂的语言
+- 纠结措辞，既要体现工作量又不能太水
+
+**AI Weekly 帮你一键搞定：**
+
+```
+┌─ 输入 ─────────────────────────────────────────┐
+│  Git 提交记录（支持多仓库）                      │
+│  feat: add user auth module                     │
+│  fix: resolve pagination bug                    │
+│  refactor: optimize database queries            │
+│  docs: update API documentation                 │
+│  ...                                            │
+└────────────────────┬────────────────────────────┘
+                     │
+                     ▼  AI 智能整理
+┌─ 输出 ─────────────────────────────────────────┐
+│  ## 本周工作总结                                 │
+│                                                  │
+│  ### 主要完成                                    │
+│  1. 完成用户认证模块开发，支持 OAuth2.0          │
+│  2. 修复订单分页 bug，响应时间优化 40%           │
+│  3. 重构数据库查询层，提升整体性能               │
+│                                                  │
+│  ### 关键数据                                    │
+│  - 提交次数：12                                  │
+│  - 修改文件：34                                  │
+│  - 代码变更：+892 / -156                         │
+└─────────────────────────────────────────────────┘
+```
+
+## ⚡ 快速开始
+
+### 安装
+
+```bash
+pip install ai-weekly
+```
+
+或从源码安装：
+
+```bash
+git clone https://github.com/YOUR_USERNAME/ai-weekly.git
+cd ai-weekly
+pip install -e .
+```
+
+### 基础用法（无需 API Key）
+
+```bash
+# 在任意 Git 仓库中运行，生成最近 7 天的周报
+ai-weekly generate
+
+# 指定时间范围
+ai-weekly generate --since 2026-05-19 --until 2026-05-25
+
+# 多仓库汇总
+ai-weekly generate ./project-a ./project-b ./project-c
+
+# 输出到文件
+ai-weekly generate --output weekly-report.md
+```
+
+即使不配置 AI，也能自动整理提交记录生成基础周报。
+
+### 启用 AI 智能整理
+
+配置环境变量后，AI 会将零散的 commit 归类整理为专业的工作汇报：
+
+```bash
+# 支持任何 OpenAI 兼容 API（包括 DreamField）
+export AI_BASE_URL="https://api.dreamfield.top/v1"
+export AI_API_KEY="your-api-key"
+export AI_MODEL="deepseek-chat"
+
+ai-weekly generate
+```
+
+## 📋 功能列表
+
+| 功能 | 说明 |
+|------|------|
+| 🔍 自动读取 Git 记录 | 支持任意 Git 仓库，自动解析 commit |
+| 📁 多仓库支持 | 同时汇总多个项目的工作内容 |
+| 🤖 AI 智能归类 | 将零散 commit 整理为 2-5 个工作项 |
+| 👤 作者过滤 | 只统计指定作者的提交 |
+| 📅 灵活时间范围 | 自定义起止日期 |
+| 📄 多格式输出 | Markdown / 终端美化显示 |
+| 🔌 兼容多种 AI | 支持任何 OpenAI 兼容 API |
+| 🚫 可离线使用 | 不配置 AI 也能生成基础报告 |
+
+## 🔧 配置说明
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `AI_BASE_URL` | `https://api.openai.com/v1` | AI API 地址 |
+| `AI_API_KEY` | (空) | API 密钥，不设置则使用离线模式 |
+| `AI_MODEL` | `gpt-4o-mini` | 使用的模型名称 |
+
+### 支持的 AI 提供商
+
+| 提供商 | Base URL | 推荐模型 |
+|--------|----------|----------|
+| DreamField | `https://api.dreamfield.top/v1` | 按平台文档 |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| 任意兼容 API | 自定义 | 自定义 |
+
+## 📊 命令一览
+
+```bash
+ai-weekly generate [REPOS...]      # 生成周报（核心命令）
+ai-weekly generate --no-ai         # 强制离线模式
+ai-weekly generate -a "张三"       # 只统计张三的提交
+ai-weekly generate -o report.md    # 保存到文件
+ai-weekly generate -c "本周还参加了技术分享会"  # 补充额外内容
+ai-weekly config                   # 查看当前配置
+```
+
+## 🏗️ 技术栈
+
+- **语言**：Python 3.10+
+- **CLI 框架**：Click
+- **终端美化**：Rich
+- **Git 交互**：subprocess (git CLI)
+- **AI 调用**：httpx (OpenAI 兼容 API)
+- **模板引擎**：Jinja2
+
+## 📁 项目结构
+
+```
+ai-weekly/
+├── src/
+│   └── ai_weekly/
+│       ├── __init__.py         # 版本信息
+│       ├── __main__.py         # python -m 入口
+│       ├── cli.py              # CLI 命令定义
+│       ├── git_reader.py       # Git 记录读取与解析
+│       └── ai_generator.py     # AI 周报生成
+├── templates/                   # 报告模板
+├── tests/                       # 测试
+├── examples/                    # 示例输出
+├── pyproject.toml              # 项目配置
+├── LICENSE                     # MIT
+└── README.md
+```
+
+## 🗓️ 路线图
+
+- [ ] 支持飞书/钉钉格式输出
+- [ ] 支持 DOCX 导出
+- [ ] 添加 Web UI 预览界面
+- [ ] 支持从 GitHub/GitLab Issues/PRs 获取更多上下文
+- [ ] 支持自定义报告模板
+- [ ] 支持定时自动生成（cron）
+
+## 📄 许可证
+
+MIT
