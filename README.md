@@ -20,172 +20,223 @@
 
 <!-- DREAMFIELD_README_HEADER_END -->
 
-# 📝 AI Weekly
+---
 
-从 Git 提交记录自动生成工作周报 — 再也不用手写周报了。
+# ai-weekly
 
-## 🤔 它解决什么问题？
+用 Git 提交记录生成周报的命令行工具。
 
-每周一早上，你打开文档开始写周报：
-- 翻 Git log 回忆这周干了什么
-- 把零散的 commit 信息整理成领导能看懂的语言
-- 纠结措辞，既要体现工作量又不能太水
+写周报烦不烦？每周一翻 git log，把 commit 凑成人话，再润色一遍发出去。
+这个工具干的就是这件事：读 git log，整理成周报，完事。
 
-**AI Weekly 帮你一键搞定：**
+配了 AI API 就用 AI 帮你润色归类，没配也能用，直接按 commit 分类输出。
 
-```
-┌─ 输入 ─────────────────────────────────────────┐
-│  Git 提交记录（支持多仓库）                      │
-│  feat: add user auth module                     │
-│  fix: resolve pagination bug                    │
-│  refactor: optimize database queries            │
-│  docs: update API documentation                 │
-│  ...                                            │
-└────────────────────┬────────────────────────────┘
-                     │
-                     ▼  AI 智能整理
-┌─ 输出 ─────────────────────────────────────────┐
-│  ## 本周工作总结                                 │
-│                                                  │
-│  ### 主要完成                                    │
-│  1. 完成用户认证模块开发，支持 OAuth2.0          │
-│  2. 修复订单分页 bug，响应时间优化 40%           │
-│  3. 重构数据库查询层，提升整体性能               │
-│                                                  │
-│  ### 关键数据                                    │
-│  - 提交次数：12                                  │
-│  - 修改文件：34                                  │
-│  - 代码变更：+892 / -156                         │
-└─────────────────────────────────────────────────┘
-```
+## 环境要求
 
-## ⚡ 快速开始
+- Python 3.10 或更高版本
+- Git（命令行能跑 `git --version` 就行）
+- 操作系统：Windows / macOS / Linux 都支持
 
-### 安装
+## 安装
+
+### 方式一：pip 安装（推荐）
 
 ```bash
 pip install ai-weekly
 ```
 
-或从源码安装：
+装完之后终端里就能直接用 `ai-weekly` 命令了。
+
+### 方式二：从源码装
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ai-weekly.git
+git clone https://github.com/haosencui/ai-weekly.git
 cd ai-weekly
 pip install -e .
 ```
 
-### 基础用法（无需 API Key）
+`-e` 是开发模式，改了代码不用重新装。
+
+### 验证安装
 
 ```bash
-# 在任意 Git 仓库中运行，生成最近 7 天的周报
+ai-weekly --version
+```
+
+能看到版本号就说明装好了。如果提示找不到命令，检查一下 Python Scripts 目录有没有加到 PATH 里。
+
+Windows 的话一般在：`C:\Users\你的用户名\AppData\Roaming\Python\Python3xx\Scripts`
+
+## 用法
+
+### 生成周报
+
+```bash
+# 最简单的用法：在 git 仓库里直接跑，默认取最近 7 天
 ai-weekly generate
 
-# 指定时间范围
+# 指定日期范围
 ai-weekly generate --since 2026-05-19 --until 2026-05-25
 
-# 多仓库汇总
-ai-weekly generate ./project-a ./project-b ./project-c
+# 多个仓库一起汇总（适合前后端分仓的项目）
+ai-weekly generate ./backend ./frontend ./infra
 
-# 输出到文件
-ai-weekly generate --output weekly-report.md
+# 只统计某个人的提交
+ai-weekly generate -a "张三"
+
+# 保存到文件（默认输出到终端）
+ai-weekly generate -o report.md
+
+# 补充一些 git 里没有的工作内容
+ai-weekly generate -c "周三参加了技术评审，周五做了分享"
+
+# 强制不用 AI，纯粹按 commit 整理
+ai-weekly generate --no-ai
 ```
 
-即使不配置 AI，也能自动整理提交记录生成基础周报。
+不传任何参数 = 当前目录 + 最近 7 天，日常够用。
 
-### 启用 AI 智能整理
-
-配置环境变量后，AI 会将零散的 commit 归类整理为专业的工作汇报：
+### 查看配置
 
 ```bash
-# 支持任何 OpenAI 兼容 API（包括 DreamField）
-export AI_BASE_URL="https://api.dreamfield.top/v1"
-export AI_API_KEY="your-api-key"
+ai-weekly config
+```
+
+会告诉你当前 AI API 配没配好，配了哪个地址和模型。
+
+## 配置 AI（可选）
+
+不配 AI 也能用，只是输出比较朴素——直接列 commit 信息。
+配了之后，AI 会把零散的 commit 归纳成 2~5 个工作项，读起来像人写的周报。
+
+### 设置环境变量
+
+Linux / macOS：
+```bash
+export AI_API_KEY="sk-你的密钥"
+export AI_BASE_URL="https://api.deepseek.com/v1"
 export AI_MODEL="deepseek-chat"
-
-ai-weekly generate
 ```
 
-## 📋 功能列表
+Windows CMD：
+```cmd
+set AI_API_KEY=sk-你的密钥
+set AI_BASE_URL=https://api.deepseek.com/v1
+set AI_MODEL=deepseek-chat
+```
 
-| 功能 | 说明 |
-|------|------|
-| 🔍 自动读取 Git 记录 | 支持任意 Git 仓库，自动解析 commit |
-| 📁 多仓库支持 | 同时汇总多个项目的工作内容 |
-| 🤖 AI 智能归类 | 将零散 commit 整理为 2-5 个工作项 |
-| 👤 作者过滤 | 只统计指定作者的提交 |
-| 📅 灵活时间范围 | 自定义起止日期 |
-| 📄 多格式输出 | Markdown / 终端美化显示 |
-| 🔌 兼容多种 AI | 支持任何 OpenAI 兼容 API |
-| 🚫 可离线使用 | 不配置 AI 也能生成基础报告 |
+Windows PowerShell：
+```powershell
+$env:AI_API_KEY="sk-你的密钥"
+$env:AI_BASE_URL="https://api.deepseek.com/v1"
+$env:AI_MODEL="deepseek-chat"
+```
 
-## 🔧 配置说明
+想持久化的话写到 `.bashrc`、`.zshrc` 或系统环境变量里。
 
-### 环境变量
+### 环境变量说明
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `AI_BASE_URL` | `https://api.openai.com/v1` | AI API 地址 |
-| `AI_API_KEY` | (空) | API 密钥，不设置则使用离线模式 |
-| `AI_MODEL` | `gpt-4o-mini` | 使用的模型名称 |
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `AI_API_KEY` | 否 | 空 | 不填就走离线模式，不调 AI |
+| `AI_BASE_URL` | 否 | `https://api.openai.com/v1` | API 地址 |
+| `AI_MODEL` | 否 | `gpt-4o-mini` | 模型名称 |
+| `AI_TIMEOUT` | 否 | `60` | 请求超时秒数 |
 
-### 支持的 AI 提供商
+### 兼容哪些 AI 服务
 
-| 提供商 | Base URL | 推荐模型 |
+只要是 OpenAI 格式的 chat completions 接口都行：
+
+| 服务商 | BASE_URL | 推荐模型 |
 |--------|----------|----------|
-| DreamField | `https://api.dreamfield.top/v1` | 按平台文档 |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
 | DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| 任意兼容 API | 自定义 | 自定义 |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| DreamField | 见平台文档 | 按平台选 |
+| 本地 Ollama | `http://localhost:11434/v1` | 你拉了什么模型就填什么 |
+| 其他兼容服务 | 自己填 | 自己填 |
 
-## 📊 命令一览
+## 效果演示
 
-```bash
-ai-weekly generate [REPOS...]      # 生成周报（核心命令）
-ai-weekly generate --no-ai         # 强制离线模式
-ai-weekly generate -a "张三"       # 只统计张三的提交
-ai-weekly generate -o report.md    # 保存到文件
-ai-weekly generate -c "本周还参加了技术分享会"  # 补充额外内容
-ai-weekly config                   # 查看当前配置
+输入（你的 git log）：
+```
+feat: add user login with OAuth2
+fix: pagination offset error on page 2+
+refactor: extract db connection pool
+docs: update deployment guide
+chore: bump dependencies
 ```
 
-## 🏗️ 技术栈
+输出（AI 模式下）：
+```markdown
+## 本周工作总结
 
-- **语言**：Python 3.10+
-- **CLI 框架**：Click
-- **终端美化**：Rich
-- **Git 交互**：subprocess (git CLI)
-- **AI 调用**：httpx (OpenAI 兼容 API)
-- **模板引擎**：Jinja2
+### 主要完成
+1. 完成用户登录模块，接入 OAuth2 认证流程
+2. 修复分页偏移问题，影响第 2 页之后的数据展示
+3. 重构数据库连接池，提升并发性能
+4. 更新部署文档和依赖版本
 
-## 📁 项目结构
+### 关键数据
+- 提交次数：5
+- 修改文件：12
+- 代码变更：+340 / -89
+```
+
+离线模式输出会更朴素，基本就是把 commit message 列出来加个统计。
+
+## 命令参考
+
+```
+ai-weekly generate [REPOS...]   生成周报
+  -s, --since TEXT              起始日期 YYYY-MM-DD（默认 7 天前）
+  -u, --until TEXT              截止日期 YYYY-MM-DD（默认今天）
+  -a, --author TEXT             按作者过滤
+  -o, --output TEXT             输出到文件
+  -c, --context TEXT            补充额外内容
+  --no-ai                       不调 AI，纯整理
+
+ai-weekly config                查看当前 AI 配置状态
+ai-weekly --version             查看版本
+ai-weekly --help                查看帮助
+```
+
+## 项目结构
 
 ```
 ai-weekly/
-├── src/
-│   └── ai_weekly/
-│       ├── __init__.py         # 版本信息
-│       ├── __main__.py         # python -m 入口
-│       ├── cli.py              # CLI 命令定义
-│       ├── git_reader.py       # Git 记录读取与解析
-│       └── ai_generator.py     # AI 周报生成
-├── templates/                   # 报告模板
-├── tests/                       # 测试
-├── examples/                    # 示例输出
-├── pyproject.toml              # 项目配置
-├── LICENSE                     # MIT
+├── src/ai_weekly/
+│   ├── __init__.py         # 版本号
+│   ├── __main__.py         # python -m ai_weekly 入口
+│   ├── cli.py              # 命令行定义和参数处理
+│   ├── git_reader.py       # 读取 git log，解析 commit 信息
+│   └── ai_generator.py     # 调 AI 接口生成报告，或 fallback 到基础格式
+├── tests/                  # 测试
+├── pyproject.toml          # 项目配置和依赖
+├── LICENSE                 # MIT
 └── README.md
 ```
 
-## 🗓️ 路线图
+## 常见问题
 
-- [ ] 支持飞书/钉钉格式输出
-- [ ] 支持 DOCX 导出
-- [ ] 添加 Web UI 预览界面
-- [ ] 支持从 GitHub/GitLab Issues/PRs 获取更多上下文
-- [ ] 支持自定义报告模板
-- [ ] 支持定时自动生成（cron）
+**Q: 提示 "git not found"**
+A: 装个 Git。Windows 去 https://git-scm.com 下载安装，装完重开终端。
 
-## 📄 许可证
+**Q: 提示找不到 ai-weekly 命令**
+A: Python Scripts 目录没在 PATH 里。`pip show ai-weekly` 看装到哪了，把那个目录加到 PATH。
+
+**Q: AI 生成超时**
+A: 设大一点超时：`export AI_TIMEOUT=120`。或者换个快一点的模型。
+
+**Q: Windows 终端显示乱码**
+A: 用 Windows Terminal 或者把终端编码改成 UTF-8（`chcp 65001`）。
+
+## 后续计划
+
+- 飞书/钉钉消息格式适配
+- 支持从 GitHub PR / Issue 拉更多上下文
+- 自定义报告模板
+- Web 预览界面
+
+## License
 
 MIT

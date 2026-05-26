@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import subprocess
+import shutil
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 
@@ -29,30 +30,63 @@ class GitSummary:
     total_deletions: int = 0
 
 
-def get_repo_name(repo_path: Path) -> str:
-    """Get repository name from remote or folder name."""
+class GitError(Exception):
+    """Raised when git operations fail."""
+
+
+def _check_git_available() -> None:
+    if shutil.which("git") is None:
+        raise GitError("git not found in PATH. Please install git first.")
+
+
+def _run_git(args: list[str], cwd: Path) -> str:
+    """Run a git command and return stdout. Raises GitError on failure."""
     try:
         result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            cwd=repo_path, capture_output=True, text=True, check=True,
+            ["git"] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
         )
-        url = result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        raise GitError(f"git command timed out: git {' '.join(args)}")
+    except FileNotFoundError:
+        raise GitError("git not found. Please install git first.")
+
+    if result.returncode != 0:
+        err = result.stderr.strip()
+        raise GitError(f"git {args[0]} failed: {err or 'unknown error'}")
+    return result.stdout
+
+
+def get_repo_name(repo_path: Path) -> str:
+    """Get repository name from remote URL or folder name."""
+    try:
+        url = _run_git(["remote", "get-url", "origin"], repo_path).strip()
         name = url.rstrip("/").split("/")[-1]
         return name.removesuffix(".git")
-    except (subprocess.CalledProcessError, IndexError):
+    except GitError:
         return repo_path.name
 
 
 def get_current_branch(repo_path: Path) -> str:
     """Get current branch name."""
     try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_path, capture_output=True, text=True, check=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError:
+        return _run_git(["rev-parse", "--abbrev-ref", "HEAD"], repo_path).strip()
+    except GitError:
         return "unknown"
+
+
+def is_git_repo(path: Path) -> bool:
+    """Check if path is inside a git repository."""
+    try:
+        _run_git(["rev-parse", "--git-dir"], path)
+        return True
+    except GitError:
+        return False
 
 
 def read_commits(
@@ -61,52 +95,35 @@ def read_commits(
     until: datetime,
     author: str | None = None,
 ) -> GitSummary:
-    """Read git commits within a date range."""
-    repo_path = Path(repo_path).resolve()
-    if not (repo_path / ".git").exists():
-        raise ValueError(f"Not a git repository: {repo_path}")
+    """Read git commits within a date range.
 
+    Handles:
+    - Merge commits (excluded by default with --no-merges)
+    - Empty date ranges (returns empty summary)
+    - Non-ASCII commit messages
+    - Repos with no remote configured
+    """
+    _check_git_available()
+    repo_path = Path(repo_path).resolve()
+
+    if not is_git_repo(repo_path):
+        raise GitError(f"Not a git repository: {repo_path}")
+
+    # Use --no-merges to skip merge commits (they clutter reports)
     cmd = [
-        "git", "log",
-        f"--since={since.strftime('%Y-%m-%d')}",
-        f"--until={until.strftime('%Y-%m-%d')}",
+        "log", "--no-merges",
+        f"--since={since.strftime('%Y-%m-%dT00:00:00')}",
+        f"--until={until.strftime('%Y-%m-%dT23:59:59')}",
         "--format=%H|%an|%aI|%s",
         "--shortstat",
     ]
     if author:
         cmd.append(f"--author={author}")
 
-    result = subprocess.run(
-        cmd, cwd=repo_path, capture_output=True, text=True, check=True,
-    )
+    output = _run_git(cmd, repo_path)
+    commits = _parse_log_output(output)
 
-    commits: list[Commit] = []
-    lines = result.stdout.strip().split("\n")
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        if not line:
-            i += 1
-            continue
-        if "|" in line and len(line.split("|")) == 4:
-            parts = line.split("|", 3)
-            commit = Commit(
-                hash=parts[0],
-                author=parts[1],
-                date=datetime.fromisoformat(parts[2]),
-                message=parts[3],
-            )
-            # Check next line for stat
-            if i + 1 < len(lines) and "changed" in lines[i + 1]:
-                stat_line = lines[i + 1].strip()
-                commit.files_changed = _parse_stat(stat_line, "file")
-                commit.insertions = _parse_stat(stat_line, "insertion")
-                commit.deletions = _parse_stat(stat_line, "deletion")
-                i += 1
-            commits.append(commit)
-        i += 1
-
-    summary = GitSummary(
+    return GitSummary(
         repo_name=get_repo_name(repo_path),
         branch=get_current_branch(repo_path),
         commits=commits,
@@ -114,13 +131,59 @@ def read_commits(
         total_insertions=sum(c.insertions for c in commits),
         total_deletions=sum(c.deletions for c in commits),
     )
-    return summary
 
 
-def _parse_stat(line: str, keyword: str) -> int:
-    """Parse a number from git shortstat line."""
+def _parse_log_output(output: str) -> list[Commit]:
+    """Parse git log output into Commit objects."""
+    commits: list[Commit] = []
+    if not output.strip():
+        return commits
+
+    lines = output.strip().split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+
+        parts = line.split("|", 3)
+        if len(parts) != 4:
+            i += 1
+            continue
+
+        try:
+            commit = Commit(
+                hash=parts[0],
+                author=parts[1],
+                date=datetime.fromisoformat(parts[2]),
+                message=parts[3].strip(),
+            )
+        except (ValueError, IndexError):
+            i += 1
+            continue
+
+        # Next non-empty line might be shortstat
+        i += 1
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+        if i < len(lines) and "changed" in lines[i]:
+            stat_line = lines[i].strip()
+            commit.files_changed = _extract_number(stat_line, "file")
+            commit.insertions = _extract_number(stat_line, "insertion")
+            commit.deletions = _extract_number(stat_line, "deletion")
+            i += 1
+
+        commits.append(commit)
+
+    return commits
+
+
+def _extract_number(line: str, keyword: str) -> int:
+    """Extract a number preceding a keyword from git shortstat output."""
     for part in line.split(","):
         if keyword in part:
             digits = "".join(c for c in part if c.isdigit())
-            return int(digits) if digits else 0
+            if digits:
+                return int(digits)
     return 0
