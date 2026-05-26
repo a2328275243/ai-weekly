@@ -1,0 +1,22 @@
+## 本周工作总结
+
+### 主要完成
+
+{% for s in summaries %}
+{% if summaries|length > 1 %}
+**{{ s.repo_name }}**
+
+{% endif %}
+{% for c in s.commits %}
+{{ loop.index }}. {{ c.message }}
+{% endfor %}
+{% endfor %}
+
+### 关键数据
+
+- 提交次数: {{ total_commits }}
+- 修改文件: {{ total_files }}
+- 代码变更: +{{ total_insertions }} / -{{ total_deletions }}
+{% if summaries|length > 1 %}
+- 涉及仓库: {{ summaries|map(attribute='repo_name')|join(', ') }}
+{% endif %}

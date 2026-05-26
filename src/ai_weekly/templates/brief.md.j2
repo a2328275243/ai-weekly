@@ -1,0 +1,8 @@
+本周完成 {{ total_commits }} 次提交，涉及 {{ total_files }} 个文件（+{{ total_insertions }}/-{{ total_deletions }}）。
+
+主要工作：
+{% for s in summaries %}
+{% for c in s.commits %}
+- {{ c.message }}
+{% endfor %}
+{% endfor %}

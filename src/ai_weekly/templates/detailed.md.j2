@@ -1,0 +1,25 @@
+## 本周工作总结
+
+{% for s in summaries %}
+### {{ s.repo_name }} ({{ s.branch }})
+
+| 日期 | 提交信息 | 文件 | 增/删 |
+|------|----------|------|-------|
+{% for c in s.commits %}
+| {{ c.date.strftime('%m-%d') }} | {{ c.message }} | {{ c.files_changed }} | +{{ c.insertions }}/-{{ c.deletions }} |
+{% endfor %}
+
+小计: {{ s.commits|length }} 次提交, {{ s.total_files_changed }} 文件变更, +{{ s.total_insertions }}/-{{ s.total_deletions }}
+
+{% endfor %}
+
+---
+
+### 汇总
+
+- 总提交: {{ total_commits }}
+- 总文件变更: {{ total_files }}
+- 总代码变更: +{{ total_insertions }} / -{{ total_deletions }}
+{% if summaries|length > 1 %}
+- 涉及仓库: {{ summaries|map(attribute='repo_name')|join(', ') }}
+{% endif %}

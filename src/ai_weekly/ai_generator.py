@@ -73,10 +73,11 @@ def generate_report(
     summaries: list[GitSummary],
     config: AIConfig,
     extra_context: str = "",
+    template: str = "default",
 ) -> str:
     """Generate weekly report. Falls back to basic formatting if AI unavailable."""
     if not config.available:
-        return _basic_report(summaries)
+        return _basic_report(summaries, template_name=template)
 
     prompt = build_prompt(summaries, extra_context)
 
@@ -125,31 +126,7 @@ def _call_ai(config: AIConfig, user_content: str) -> str:
         raise AIError(f"Unexpected API response format: {e}")
 
 
-def _basic_report(summaries: list[GitSummary]) -> str:
-    """Generate a structured report without AI."""
-    total_commits = sum(len(s.commits) for s in summaries)
-    total_files = sum(s.total_files_changed for s in summaries)
-    total_ins = sum(s.total_insertions for s in summaries)
-    total_del = sum(s.total_deletions for s in summaries)
-
-    lines = ["## 本周工作总结\n", "### 主要完成\n"]
-
-    idx = 1
-    for s in summaries:
-        if len(summaries) > 1:
-            lines.append(f"**{s.repo_name}**\n")
-        for c in s.commits:
-            lines.append(f"{idx}. {c.message}")
-            idx += 1
-        if len(summaries) > 1:
-            lines.append("")
-
-    lines.append("\n### 关键数据\n")
-    lines.append(f"- 提交次数: {total_commits}")
-    lines.append(f"- 修改文件: {total_files}")
-    lines.append(f"- 代码变更: +{total_ins} / -{total_del}")
-
-    if len(summaries) > 1:
-        lines.append(f"- 涉及仓库: {', '.join(s.repo_name for s in summaries)}")
-
-    return "\n".join(lines)
+def _basic_report(summaries: list[GitSummary], template_name: str = "default") -> str:
+    """Generate a structured report without AI, using Jinja2 templates."""
+    from .renderer import render
+    return render(summaries, template_name=template_name)

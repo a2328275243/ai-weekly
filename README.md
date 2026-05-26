@@ -50,7 +50,7 @@ pip install ai-weekly
 ### 方式二：从源码装
 
 ```bash
-git clone https://github.com/haosencui/ai-weekly.git
+git clone https://github.com/a2328275243/ai-weekly.git
 cd ai-weekly
 pip install -e .
 ```
@@ -78,31 +78,84 @@ ai-weekly generate
 # 指定日期范围
 ai-weekly generate --since 2026-05-19 --until 2026-05-25
 
-# 多个仓库一起汇总（适合前后端分仓的项目）
+# 多个仓库一起汇总
 ai-weekly generate ./backend ./frontend ./infra
 
 # 只统计某个人的提交
 ai-weekly generate -a "张三"
 
-# 保存到文件（默认输出到终端）
+# 保存到文件
 ai-weekly generate -o report.md
 
-# 补充一些 git 里没有的工作内容
-ai-weekly generate -c "周三参加了技术评审，周五做了分享"
+# 补充 git 里没有的工作内容
+ai-weekly generate -c "周三参加了技术评审"
 
-# 强制不用 AI，纯粹按 commit 整理
+# 不用 AI，纯粹按 commit 整理
 ai-weekly generate --no-ai
 ```
 
-不传任何参数 = 当前目录 + 最近 7 天，日常够用。
+### 输出格式
+
+```bash
+# 默认 Markdown
+ai-weekly generate
+
+# 飞书卡片 JSON（可直接用于飞书 webhook）
+ai-weekly generate --format feishu
+
+# 钉钉消息 JSON（可直接用于钉钉 webhook）
+ai-weekly generate --format dingtalk
+
+# 结构化 JSON（方便程序处理）
+ai-weekly generate --format json
+```
+
+### 报告模板
+
+```bash
+# 默认模板
+ai-weekly generate --template default
+
+# 详细模板（带表格，每条 commit 都列出来）
+ai-weekly generate --template detailed
+
+# 简洁模板（一段话概括）
+ai-weekly generate --template brief
+
+# 自定义模板（Jinja2 格式）
+ai-weekly generate --template ./my-template.md.j2
+```
+
+### GitHub PR 上下文
+
+```bash
+# 自动从 git remote 检测仓库，拉取 PR 信息丰富报告
+ai-weekly generate --github
+
+# 手动指定仓库
+ai-weekly generate --github owner/repo
+```
+
+需要设置 `GITHUB_TOKEN` 环境变量（公开仓库不设也行，但有速率限制）。
+
+### Web 预览
+
+```bash
+# 生成后直接在浏览器里预览
+ai-weekly generate --preview
+
+# 预览已有的报告文件
+ai-weekly preview report.md
+```
+
+浏览器里可以切换 Markdown / 飞书 / 钉钉三种格式查看，带一键复制。
 
 ### 查看配置
 
 ```bash
 ai-weekly config
+ai-weekly config --json   # JSON 输出，方便脚本读取
 ```
-
-会告诉你当前 AI API 配没配好，配了哪个地址和模型。
 
 ## 配置 AI（可选）
 
@@ -147,13 +200,17 @@ $env:AI_MODEL="deepseek-chat"
 
 只要是 OpenAI 格式的 chat completions 接口都行：
 
-| 服务商 | BASE_URL | 推荐模型 |
-|--------|----------|----------|
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
-| DreamField | 见平台文档 | 按平台选 |
-| 本地 Ollama | `http://localhost:11434/v1` | 你拉了什么模型就填什么 |
-| 其他兼容服务 | 自己填 | 自己填 |
+| 服务商 | BASE_URL | 推荐模型 | 免费额度 |
+|--------|----------|----------|----------|
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` | 注册送 500 万 tokens |
+| SiliconFlow | `https://api.siliconflow.cn/v1` | `Qwen/Qwen2.5-7B-Instruct` | 注册送 2000 万 tokens，部分模型永久免费 |
+| 智谱 AI | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-flash` | glm-4-flash 免费不限量 |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-8b-instant` | 免费，每分钟 30 请求 |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | 付费 |
+| 本地 Ollama | `http://localhost:11434/v1` | 你拉了什么就填什么 | 免费，本地跑 |
+| 其他兼容服务 | 自己填 | 自己填 | - |
+
+推荐新用户用 **智谱 glm-4-flash**（免费不限量）或 **SiliconFlow**（注册就送大量额度）。
 
 ## 效果演示
 
@@ -193,27 +250,52 @@ ai-weekly generate [REPOS...]   生成周报
   -a, --author TEXT             按作者过滤
   -o, --output TEXT             输出到文件
   -c, --context TEXT            补充额外内容
-  --no-ai                       不调 AI，纯整理
+  -t, --template TEXT           模板: default|detailed|brief|路径
+  --format TEXT                 格式: markdown|feishu|dingtalk|json
+  --github [OWNER/REPO]        拉取 GitHub PR 上下文
+  --preview                     生成后浏览器预览
+  --no-ai                       不调 AI，纯模板整理
+  -q, --quiet                   安静模式，只输出内容
 
-ai-weekly config                查看当前 AI 配置状态
+ai-weekly preview [FILE]        浏览器预览报告文件
+ai-weekly config [--json]       查看 AI 配置状态
 ai-weekly --version             查看版本
 ai-weekly --help                查看帮助
 ```
 
+## For AI Agents
+
+这个工具对 AI agent（Claude Code、Codex、Cursor 等）友好：
+
+```bash
+# 安静模式 + JSON 输出，方便解析
+ai-weekly generate --no-ai --quiet --format json
+
+# 配置检查
+ai-weekly config --json
+
+# 退出码: 0=成功, 1=错误, 2=无数据
+```
+
+agent 直接通过 shell 调用即可，不需要额外集成。
+
 ## 项目结构
 
 ```
-ai-weekly/
-├── src/ai_weekly/
-│   ├── __init__.py         # 版本号
-│   ├── __main__.py         # python -m ai_weekly 入口
-│   ├── cli.py              # 命令行定义和参数处理
-│   ├── git_reader.py       # 读取 git log，解析 commit 信息
-│   └── ai_generator.py     # 调 AI 接口生成报告，或 fallback 到基础格式
-├── tests/                  # 测试
-├── pyproject.toml          # 项目配置和依赖
-├── LICENSE                 # MIT
-└── README.md
+src/ai_weekly/
+├── cli.py              # 命令行入口，所有参数处理
+├── git_reader.py       # 读 git log，解析 commit
+├── ai_generator.py     # 调 AI 生成报告 / fallback 到模板
+├── renderer.py         # Jinja2 模板渲染
+├── formatters.py       # 输出格式转换（飞书/钉钉/JSON）
+├── github_context.py   # GitHub PR/Issue 数据拉取
+├── web.py              # 本地预览服务器
+├── templates/          # 内置 Jinja2 模板
+│   ├── default.md.j2
+│   ├── detailed.md.j2
+│   └── brief.md.j2
+└── static/
+    └── preview.html    # 预览页面
 ```
 
 ## 常见问题
@@ -230,12 +312,20 @@ A: 设大一点超时：`export AI_TIMEOUT=120`。或者换个快一点的模型
 **Q: Windows 终端显示乱码**
 A: 用 Windows Terminal 或者把终端编码改成 UTF-8（`chcp 65001`）。
 
-## 后续计划
+## 已实现
 
-- 飞书/钉钉消息格式适配
-- 支持从 GitHub PR / Issue 拉更多上下文
-- 自定义报告模板
-- Web 预览界面
+- [x] 飞书/钉钉消息格式适配
+- [x] GitHub PR/Issue 上下文拉取
+- [x] 自定义 Jinja2 报告模板
+- [x] Web 浏览器预览界面
+- [x] AI Agent 友好（--quiet + --format json）
+- [x] 多种免费 AI 服务支持
+
+## 后续想法
+
+- Webhook 直接推送到飞书/钉钉群
+- 定时自动生成（cron / GitHub Actions）
+- DOCX 导出
 
 ## License
 
