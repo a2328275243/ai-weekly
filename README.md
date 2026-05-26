@@ -31,6 +31,65 @@
 
 配了 AI API 就用 AI 帮你润色归类，没配也能用，直接按 commit 分类输出。
 
+## 30 秒上手
+
+```bash
+pip install ai-weekly
+cd your-project
+ai-weekly
+```
+
+三行搞定。不需要配置任何东西，直接出周报。
+
+想要 AI 润色？加两个环境变量（推荐智谱 glm-4-flash，免费不限量）：
+
+```bash
+export AI_BASE_URL="https://open.bigmodel.cn/api/paas/v4"
+export AI_API_KEY="你的key"    # 去 open.bigmodel.cn 注册就有
+export AI_MODEL="glm-4-flash"
+ai-weekly
+```
+
+## GitHub Action 自动周报
+
+不想手动跑？把下面这个文件放到你仓库的 `.github/workflows/weekly-report.yml`，每周一自动生成周报发到 Issue：
+
+```yaml
+name: Weekly Report
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install ai-weekly
+      - run: ai-weekly generate --quiet -o report.md
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          AI_MODEL: ${{ secrets.AI_MODEL }}
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('report.md', 'utf8');
+            const today = new Date().toISOString().split('T')[0];
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `周报 ${today}`, body, labels: ['weekly-report']
+            });
+```
+
+不配 AI secret 也能跑，只是输出朴素一点。
+
 ## 环境要求
 
 - Python 3.10 或更高版本

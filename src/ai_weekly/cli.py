@@ -22,20 +22,18 @@ from .git_reader import GitError, GitSummary, is_git_repo, read_commits
 console = Console()
 
 
-@click.group()
+@click.group(invoke_without_command=True)
 @click.version_option()
-def main():
+@click.pass_context
+def main(ctx):
     """ai-weekly: generate work reports from git history.
 
-    AI-powered CLI tool that reads git commits and produces
-    professional weekly reports. Works with any OpenAI-compatible API.
-
-    Quick start:
-      ai-weekly generate              # current repo, last 7 days
-      ai-weekly generate --no-ai      # without AI, just organize
-      ai-weekly generate -o report.md # save to file
+    Just run `ai-weekly` in any git repo to get your weekly report.
+    No configuration needed - works out of the box.
     """
-    pass
+    # If no subcommand given, run generate with defaults
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(generate)
 
 
 @main.command()
