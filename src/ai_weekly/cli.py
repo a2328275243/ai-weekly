@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import sys
+import io
+
 import click
 from rich.console import Console
 from rich.markdown import Markdown
@@ -13,7 +16,12 @@ from rich.panel import Panel
 from .ai_generator import AIConfig, generate_report
 from .git_reader import read_commits
 
-console = Console(force_terminal=True)
+# Fix Windows GBK encoding issues
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+console = Console()
 
 
 @click.group()
@@ -50,9 +58,9 @@ def generate(repos, since, until, author, output, context, no_ai):
 
     console.print(
         Panel(
-            f"[bold]AI Weekly[/bold] — 周报生成中\n"
-            f"时间范围: {since_dt.strftime('%Y-%m-%d')} → {until_dt.strftime('%Y-%m-%d')}\n"
-            f"仓库数量: {len(repos)}",
+            f"[bold]AI Weekly[/bold] - Generating report\n"
+            f"Range: {since_dt.strftime('%Y-%m-%d')} to {until_dt.strftime('%Y-%m-%d')}\n"
+            f"Repos: {len(repos)}",
             style="blue",
         )
     )
@@ -65,14 +73,14 @@ def generate(repos, since, until, author, output, context, no_ai):
             summary = read_commits(repo_path, since_dt, until_dt, author)
             summaries.append(summary)
             console.print(
-                f"  ✓ [green]{summary.repo_name}[/green] — "
+                f"  [green]OK[/green] {summary.repo_name} - "
                 f"{len(summary.commits)} commits"
             )
         except ValueError as e:
-            console.print(f"  x [red]{repo}[/red] - {e}")
+            console.print(f"  [red]SKIP[/red] {repo} - {e}")
 
     if not summaries or all(len(s.commits) == 0 for s in summaries):
-        console.print("\n[yellow]⚠ 该时间范围内没有找到提交记录。[/yellow]")
+        console.print("\n[yellow]No commits found in this date range.[/yellow]")
         return
 
     # Generate report
@@ -87,7 +95,7 @@ def generate(repos, since, until, author, output, context, no_ai):
     # Output
     if output:
         Path(output).write_text(report, encoding="utf-8")
-        console.print(f"\n[green]✓ 周报已保存到: {output}[/green]")
+        console.print(f"\n[green]Done! Report saved to: {output}[/green]")
     else:
         console.print("\n")
         console.print(Markdown(report))
@@ -102,8 +110,8 @@ def config():
     console.print(Panel(
         f"AI Base URL: {cfg.base_url}\n"
         f"AI Model:    {cfg.model}\n"
-        f"API Key:     {'✓ 已设置' if cfg.api_key else '✗ 未设置'}",
-        title="当前配置",
+        f"API Key:     {'[green]SET[/green]' if cfg.api_key else '[red]NOT SET[/red]'}",
+        title="Config",
         style="cyan",
     ))
 
